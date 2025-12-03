@@ -59,8 +59,10 @@ public class WebSocketHandler {
 	 */
 	public String username;
 
-    private static final String GROUP_USER_HASH = "group:users:";
-    private static final String USER_EXPIRE_SET = "group:expire:";
+	private static final String GROUP_USER_HASH = "group:users:";
+
+	private static final String USER_EXPIRE_SET = "group:expire:";
+
 	/**
 	 * 发送消息
 	 * @param username
@@ -96,8 +98,8 @@ public class WebSocketHandler {
 		if (!"server".equals(username) && username.split(",").length < 3) {
 			return;
 		}
-        // 存储用户
-        storeUser(username);
+		// 存储用户
+		storeUser(username);
 		// 将用户添加到websocket，支持单用户多出链接
 		if (webSocketMap.containsKey(username)) {
 			webSocketMap.get(username).add(this);
@@ -113,7 +115,7 @@ public class WebSocketHandler {
 		messageMap.put("type", "0");
 		messageMap.put("message", username + "加入8000端口的的当前在线人数为" + getOnlineCount());
 		messageMap.put("to", "all");
-        messageMap.put("status", "0");
+		messageMap.put("status", "0");
 		messageMap.put("users", webSocketMap.keySet());
 		messageMap.put("username", "server");
 		sendMessageAll(JSONUtil.toJsonStr(messageMap));
@@ -131,27 +133,30 @@ public class WebSocketHandler {
 			}
 		}
 	}
-    /**
-     * 发送消息给同一组的所有用户
-     * @param targetGroupId 目标组ID
-     * @param message 消息内容
-     */
-    public void sendMessageToGroup(String targetGroupId, String message) {
-        for (String key : webSocketMap.keySet()) {
-            // 解析key，获取组ID
-            String[] keyParts = key.split(",");
-            if (keyParts.length >= 2 && keyParts[1].equals(targetGroupId)) {
-                for (WebSocketHandler websocket : webSocketMap.get(key)) {
-                    try {
-                        websocket.session.getAsyncRemote().sendText(message);
-                    } catch (Exception e) {
-                        // 处理发送异常，可以记录日志或移除失效的连接
-                        e.printStackTrace();
-                    }
-                }
-            }
-        }
-    }
+
+	/**
+	 * 发送消息给同一组的所有用户
+	 * @param targetGroupId 目标组ID
+	 * @param message 消息内容
+	 */
+	public void sendMessageToGroup(String targetGroupId, String message) {
+		for (String key : webSocketMap.keySet()) {
+			// 解析key，获取组ID
+			String[] keyParts = key.split(",");
+			if (keyParts.length >= 2 && keyParts[1].equals(targetGroupId)) {
+				for (WebSocketHandler websocket : webSocketMap.get(key)) {
+					try {
+						websocket.session.getAsyncRemote().sendText(message);
+					}
+					catch (Exception e) {
+						// 处理发送异常，可以记录日志或移除失效的连接
+						e.printStackTrace();
+					}
+				}
+			}
+		}
+	}
+
 	/**
 	 * 连接关闭调用的方法
 	 */
@@ -165,13 +170,13 @@ public class WebSocketHandler {
 				webSocketMap.get(username).remove(this);// 删除链接
 				if (webSocketMap.get(username).isEmpty()) {
 					webSocketMap.remove(username);
-                    // 删除redis用户
-                    removeUser(username);
+					// 删除redis用户
+					removeUser(username);
 					subOnlineCount(); // 在线数减1
 					// 刷新用户列表
 					Map<String, Object> messageMap = new ConcurrentHashMap<>();
 					messageMap.put("type", 0);
-                    messageMap.put("status", "0");
+					messageMap.put("status", "0");
 					messageMap.put("message", username + "退出！当前在线人数为" + getOnlineCount());
 					messageMap.put("users", webSocketMap.keySet());
 					sendMessageAll(JSONUtil.toJsonStr(messageMap));
@@ -195,7 +200,7 @@ public class WebSocketHandler {
 		cn.hutool.json.JSONObject messageJson = JSONUtil.parseObj(message);
 		Object type = messageJson.get("type");// 消息类型
 		Object toUser = messageJson.get("to");// 接收对象
-        Object status = messageJson.get("status");// 接收对象
+		Object status = messageJson.get("status");// 接收对象
 		// 心跳检测
 		if ("999".equals(type)) {
 			Map<String, Object> messageMap = new ConcurrentHashMap<>();
@@ -203,7 +208,7 @@ public class WebSocketHandler {
 			messageMap.put("message", "pong");
 			messageMap.put("username", "服务器");
 			messageMap.put("to", this.username);
-            messageMap.put("status", status);
+			messageMap.put("status", status);
 			sendMessageOne(JSONUtil.toJsonStr(messageMap), this.username);
 			return;
 		}
@@ -211,36 +216,38 @@ public class WebSocketHandler {
 		if ("All".equalsIgnoreCase(type + "")) {
 			sendMessageAll(message);
 		}
-        if ("1".equalsIgnoreCase(type + "")) {
-            String groupId = extractGroupId(messageJson.get("username").toString(), 1);
-            String currentUserId = extractGroupId(messageJson.get("username").toString(), 2);
+		if ("1".equalsIgnoreCase(type + "")) {
+			String groupId = extractGroupId(messageJson.get("username").toString(), 1);
+			String currentUserId = extractGroupId(messageJson.get("username").toString(), 2);
 
-            List<String> userIds = getUserIdsFromRedisByGroupId(groupId);
-            // 使用Stream过滤掉当前用户ID
-            List<String> otherUserIds = userIds.stream()
-                    .filter(userId -> !userId.equals(currentUserId))
-                    .collect(Collectors.toList());
-            // 群发同一个区划的给其他用户
-            for (String userId : otherUserIds) {
-                String compositeId = getDepartmentFromCompositeId(toUser.toString()) + "," + groupId + "," + userId;
-                System.out.println("群发给用户：" + compositeId);
-                sendMessageAll(message, compositeId);
-            }
+			List<String> userIds = getUserIdsFromRedisByGroupId(groupId);
+			// 使用Stream过滤掉当前用户ID
+			List<String> otherUserIds = userIds.stream()
+				.filter(userId -> !userId.equals(currentUserId))
+				.collect(Collectors.toList());
+			// 群发同一个区划的给其他用户
+			for (String userId : otherUserIds) {
+				String compositeId = getDepartmentFromCompositeId(toUser.toString()) + "," + groupId + "," + userId;
+				System.out.println("群发给用户：" + compositeId);
+				sendMessageAll(message, compositeId);
+			}
 		}
-        if ("2".equalsIgnoreCase(type + "")) {
-            sendMessageOne(message, toUser + "");
-        }
+		if ("2".equalsIgnoreCase(type + "")) {
+			sendMessageOne(message, toUser + "");
+		}
 	}
-    /**
-     * 从复合ID中提取部门
-     */
-    public static String getDepartmentFromCompositeId(String compositeId) {
-        if (compositeId == null) {
-            return null;
-        }
-        String[] parts = compositeId.split(",");
-        return parts.length >= 1 ? parts[0] : null;
-    }
+
+	/**
+	 * 从复合ID中提取部门
+	 */
+	public static String getDepartmentFromCompositeId(String compositeId) {
+		if (compositeId == null) {
+			return null;
+		}
+		String[] parts = compositeId.split(",");
+		return parts.length >= 1 ? parts[0] : null;
+	}
+
 	/**
 	 * 发生错误时调用
 	 */
@@ -259,33 +266,34 @@ public class WebSocketHandler {
 		this.session.getAsyncRemote().sendText(message);// 异步
 	}
 
-    /**
-     * 发送消息给指定用户
-     * @param message
-     * @param toUserName
-     */
-    public void sendMessageAll(String message, String toUserName) {
-        webSocketMap.keySet().forEach(e -> {
-            if (e.equals(toUserName)) {
-                webSocketMap.get(e).forEach(f -> {
-                    try {
-                        f.session.getAsyncRemote().sendText(message);
-                        CompletableFuture.runAsync(() -> {
-                            try {
-                                // 记录结果
-                            } catch (Exception e1) {
-                                // 处理异常
-                                log.error("收到结果记录插入失败", e);
-                            }
-                        });
-                    }
-                    catch (Exception e2) {
-                        f.session.getAsyncRemote().sendText(message);
-                    }
-                });
-            }
-        });
-    }
+	/**
+	 * 发送消息给指定用户
+	 * @param message
+	 * @param toUserName
+	 */
+	public void sendMessageAll(String message, String toUserName) {
+		webSocketMap.keySet().forEach(e -> {
+			if (e.equals(toUserName)) {
+				webSocketMap.get(e).forEach(f -> {
+					try {
+						f.session.getAsyncRemote().sendText(message);
+						CompletableFuture.runAsync(() -> {
+							try {
+								// 记录结果
+							}
+							catch (Exception e1) {
+								// 处理异常
+								log.error("收到结果记录插入失败", e);
+							}
+						});
+					}
+					catch (Exception e2) {
+						f.session.getAsyncRemote().sendText(message);
+					}
+				});
+			}
+		});
+	}
 
 	/**
 	 * 发送消息给指定用户
@@ -306,197 +314,202 @@ public class WebSocketHandler {
 			}
 		});
 	}
-    /**
-     * 存储用户（每个用户单独24小时过期）
-     */
-    public void storeUser(String compositeId) {
-        RedisTemplate<String, String> redisTemplate = SpringUtil.getBean(RedisTemplate.class);
-        String[] parts = compositeId.split(",");
-        if (parts.length < 3) return;
 
-        String department = parts[0];
-        String groupId = parts[1];
-        String userId = parts[2];
+	/**
+	 * 存储用户（每个用户单独24小时过期）
+	 */
+	public void storeUser(String compositeId) {
+		RedisTemplate<String, String> redisTemplate = SpringUtil.getBean(RedisTemplate.class);
+		String[] parts = compositeId.split(",");
+		if (parts.length < 3)
+			return;
 
-        // 1. 构建Hash key：group:users:500229000000
-        String hashKey = GROUP_USER_HASH + groupId;
+		String department = parts[0];
+		String groupId = parts[1];
+		String userId = parts[2];
 
-        // 2. Hash field使用用户ID，value存储完整信息
-        String userInfo = department + "," + groupId + "," + userId + "|" + System.currentTimeMillis();
-        redisTemplate.opsForHash().put(hashKey, userId, userInfo);
+		// 1. 构建Hash key：group:users:500229000000
+		String hashKey = GROUP_USER_HASH + groupId;
 
-        // 3. 为每个用户单独设置过期（使用一个有序集合来管理过期时间）
-        String expireKey = USER_EXPIRE_SET + groupId + ":" + userId;
-        String expireValue = compositeId;
+		// 2. Hash field使用用户ID，value存储完整信息
+		String userInfo = department + "," + groupId + "," + userId + "|" + System.currentTimeMillis();
+		redisTemplate.opsForHash().put(hashKey, userId, userInfo);
 
-        // 存储用户信息，24小时后自动过期
-        redisTemplate.opsForValue().set(expireKey, expireValue, 24 * 60 * 60, TimeUnit.SECONDS);
-    }
+		// 3. 为每个用户单独设置过期（使用一个有序集合来管理过期时间）
+		String expireKey = USER_EXPIRE_SET + groupId + ":" + userId;
+		String expireValue = compositeId;
 
-    /**
-     * 批量存储多个用户（每个用户单独过期）
-     */
-    public void batchStoreUsers(List<String> compositeIds) {
-        RedisTemplate<String, String> redisTemplate = SpringUtil.getBean(RedisTemplate.class);
-        // 按分组ID分组存储
-        Map<String, List<String[]>> groupMap = new HashMap<>();
+		// 存储用户信息，24小时后自动过期
+		redisTemplate.opsForValue().set(expireKey, expireValue, 24 * 60 * 60, TimeUnit.SECONDS);
+	}
 
-        for (String compositeId : compositeIds) {
-            String[] parts = compositeId.split(",");
-            if (parts.length >= 3) {
-                String groupId = parts[1];
-                groupMap.computeIfAbsent(groupId, k -> new ArrayList<>()).add(parts);
-            }
-        }
+	/**
+	 * 批量存储多个用户（每个用户单独过期）
+	 */
+	public void batchStoreUsers(List<String> compositeIds) {
+		RedisTemplate<String, String> redisTemplate = SpringUtil.getBean(RedisTemplate.class);
+		// 按分组ID分组存储
+		Map<String, List<String[]>> groupMap = new HashMap<>();
 
-        // 按分组批量存储
-        for (Map.Entry<String, List<String[]>> entry : groupMap.entrySet()) {
-            String groupId = entry.getKey();
-            String hashKey = GROUP_USER_HASH + groupId;
+		for (String compositeId : compositeIds) {
+			String[] parts = compositeId.split(",");
+			if (parts.length >= 3) {
+				String groupId = parts[1];
+				groupMap.computeIfAbsent(groupId, k -> new ArrayList<>()).add(parts);
+			}
+		}
 
-            Map<String, String> userMap = new HashMap<>();
+		// 按分组批量存储
+		for (Map.Entry<String, List<String[]>> entry : groupMap.entrySet()) {
+			String groupId = entry.getKey();
+			String hashKey = GROUP_USER_HASH + groupId;
 
-            for (String[] parts : entry.getValue()) {
-                String userId = parts[2];
-                String userInfo = parts[0] + "," + parts[1] + "," + userId + "|" + System.currentTimeMillis();
-                userMap.put(userId, userInfo);
+			Map<String, String> userMap = new HashMap<>();
 
-                // 为每个用户设置单独的过期key
-                String expireKey = USER_EXPIRE_SET + groupId + ":" + userId;
-                String compositeId = parts[0] + "," + parts[1] + "," + userId;
-                redisTemplate.opsForValue().set(expireKey, compositeId, 24 * 60 * 60, TimeUnit.SECONDS);
-            }
+			for (String[] parts : entry.getValue()) {
+				String userId = parts[2];
+				String userInfo = parts[0] + "," + parts[1] + "," + userId + "|" + System.currentTimeMillis();
+				userMap.put(userId, userInfo);
 
-            // 批量存入Hash
-            redisTemplate.opsForHash().putAll(hashKey, userMap);
-        }
-    }
+				// 为每个用户设置单独的过期key
+				String expireKey = USER_EXPIRE_SET + groupId + ":" + userId;
+				String compositeId = parts[0] + "," + parts[1] + "," + userId;
+				redisTemplate.opsForValue().set(expireKey, compositeId, 24 * 60 * 60, TimeUnit.SECONDS);
+			}
 
-    /**
-     * 续期用户（重新设置24小时）
-     */
-    public void renewUser(String compositeId) {
-        RedisTemplate<String, String> redisTemplate = SpringUtil.getBean(RedisTemplate.class);
-        String[] parts = compositeId.split(",");
-        if (parts.length < 3) return;
+			// 批量存入Hash
+			redisTemplate.opsForHash().putAll(hashKey, userMap);
+		}
+	}
 
-        String groupId = parts[1];
-        String userId = parts[2];
+	/**
+	 * 续期用户（重新设置24小时）
+	 */
+	public void renewUser(String compositeId) {
+		RedisTemplate<String, String> redisTemplate = SpringUtil.getBean(RedisTemplate.class);
+		String[] parts = compositeId.split(",");
+		if (parts.length < 3)
+			return;
 
-        // 1. 更新Hash中的时间戳
-        String hashKey = GROUP_USER_HASH + groupId;
-        String oldUserInfo = (String) redisTemplate.opsForHash().get(hashKey, userId);
+		String groupId = parts[1];
+		String userId = parts[2];
 
-        if (oldUserInfo != null) {
-            String[] infoParts = oldUserInfo.split("\\|");
-            String newUserInfo = infoParts[0] + "|" + System.currentTimeMillis();
-            redisTemplate.opsForHash().put(hashKey, userId, newUserInfo);
-        }
+		// 1. 更新Hash中的时间戳
+		String hashKey = GROUP_USER_HASH + groupId;
+		String oldUserInfo = (String) redisTemplate.opsForHash().get(hashKey, userId);
 
-        // 2. 续期过期key
-        String expireKey = USER_EXPIRE_SET + groupId + ":" + userId;
-        redisTemplate.expire(expireKey, 24 * 60 * 60, TimeUnit.SECONDS);
-    }
+		if (oldUserInfo != null) {
+			String[] infoParts = oldUserInfo.split("\\|");
+			String newUserInfo = infoParts[0] + "|" + System.currentTimeMillis();
+			redisTemplate.opsForHash().put(hashKey, userId, newUserInfo);
+		}
 
-    /**
-     * 用户主动退出/删除用户
-     */
-    public void removeUser(String compositeId) {
-        RedisTemplate<String, String> redisTemplate = SpringUtil.getBean(RedisTemplate.class);
-        String[] parts = compositeId.split(",");
-        if (parts.length < 3) return;
+		// 2. 续期过期key
+		String expireKey = USER_EXPIRE_SET + groupId + ":" + userId;
+		redisTemplate.expire(expireKey, 24 * 60 * 60, TimeUnit.SECONDS);
+	}
 
-        String groupId = parts[1];
-        String userId = parts[2];
+	/**
+	 * 用户主动退出/删除用户
+	 */
+	public void removeUser(String compositeId) {
+		RedisTemplate<String, String> redisTemplate = SpringUtil.getBean(RedisTemplate.class);
+		String[] parts = compositeId.split(",");
+		if (parts.length < 3)
+			return;
 
-        // 1. 从Hash中删除
-        String hashKey = GROUP_USER_HASH + groupId;
-        redisTemplate.opsForHash().delete(hashKey, userId);
+		String groupId = parts[1];
+		String userId = parts[2];
 
-        // 2. 删除过期key
-        String expireKey = USER_EXPIRE_SET + groupId + ":" + userId;
-        redisTemplate.delete(expireKey);
-    }
+		// 1. 从Hash中删除
+		String hashKey = GROUP_USER_HASH + groupId;
+		redisTemplate.opsForHash().delete(hashKey, userId);
 
-    /**
-     * 检查用户是否过期（通过检查过期key是否存在）
-     */
-    public boolean isUserActive(String groupId, String userId) {
-        RedisTemplate<String, String> redisTemplate = SpringUtil.getBean(RedisTemplate.class);
-        String expireKey = USER_EXPIRE_SET + groupId + ":" + userId;
-        return Boolean.TRUE.equals(redisTemplate.hasKey(expireKey));
-    }
+		// 2. 删除过期key
+		String expireKey = USER_EXPIRE_SET + groupId + ":" + userId;
+		redisTemplate.delete(expireKey);
+	}
 
-    /**
-     * 获取用户剩余过期时间（秒）
-     */
-    public Long getUserTTL(String groupId, String userId) {
-        RedisTemplate<String, String> redisTemplate = SpringUtil.getBean(RedisTemplate.class);
-        String expireKey = USER_EXPIRE_SET + groupId + ":" + userId;
-        return redisTemplate.getExpire(expireKey, TimeUnit.SECONDS);
-    }
-    /**
-     * 清理过期的用户（手动清理，可作为定时任务）
-     */
-    public void cleanupExpiredUsers(String groupId) {
-        RedisTemplate<String, String> redisTemplate = SpringUtil.getBean(RedisTemplate.class);
-        String hashKey = GROUP_USER_HASH + groupId;
-        Map<Object, Object> entries = redisTemplate.opsForHash().entries(hashKey);
+	/**
+	 * 检查用户是否过期（通过检查过期key是否存在）
+	 */
+	public boolean isUserActive(String groupId, String userId) {
+		RedisTemplate<String, String> redisTemplate = SpringUtil.getBean(RedisTemplate.class);
+		String expireKey = USER_EXPIRE_SET + groupId + ":" + userId;
+		return Boolean.TRUE.equals(redisTemplate.hasKey(expireKey));
+	}
 
-        if (entries == null || entries.isEmpty()) {
-            return;
-        }
+	/**
+	 * 获取用户剩余过期时间（秒）
+	 */
+	public Long getUserTTL(String groupId, String userId) {
+		RedisTemplate<String, String> redisTemplate = SpringUtil.getBean(RedisTemplate.class);
+		String expireKey = USER_EXPIRE_SET + groupId + ":" + userId;
+		return redisTemplate.getExpire(expireKey, TimeUnit.SECONDS);
+	}
 
-        List<String> expiredUserIds = new ArrayList<>();
+	/**
+	 * 清理过期的用户（手动清理，可作为定时任务）
+	 */
+	public void cleanupExpiredUsers(String groupId) {
+		RedisTemplate<String, String> redisTemplate = SpringUtil.getBean(RedisTemplate.class);
+		String hashKey = GROUP_USER_HASH + groupId;
+		Map<Object, Object> entries = redisTemplate.opsForHash().entries(hashKey);
 
-        for (Map.Entry<Object, Object> entry : entries.entrySet()) {
-            String userId = (String) entry.getKey();
-            String expireKey = USER_EXPIRE_SET + groupId + ":" + userId;
+		if (entries == null || entries.isEmpty()) {
+			return;
+		}
 
-            // 检查过期key是否存在
-            if (!Boolean.TRUE.equals(redisTemplate.hasKey(expireKey))) {
-                expiredUserIds.add(userId);
-            }
-        }
+		List<String> expiredUserIds = new ArrayList<>();
 
-        // 删除已过期的用户
-        if (!expiredUserIds.isEmpty()) {
-            Object[] userIdsArray = expiredUserIds.toArray();
-            redisTemplate.opsForHash().delete(hashKey, userIdsArray);
-            System.out.println("清理了 " + expiredUserIds.size() + " 个过期用户");
-        }
-    }
-    /**
-     * 从Redis根据组ID获取所有用户ID
-     * @param groupId 组ID
-     * @return 用户ID列表
-     */
-    public List<String> getUserIdsFromRedisByGroupId(String groupId) {
-        RedisTemplate<String, String> redisTemplate = SpringUtil.getBean(RedisTemplate.class);
-        String hashKey = GROUP_USER_HASH + groupId;
+		for (Map.Entry<Object, Object> entry : entries.entrySet()) {
+			String userId = (String) entry.getKey();
+			String expireKey = USER_EXPIRE_SET + groupId + ":" + userId;
 
-        // 获取Hash中的所有键（用户ID）
-        Set<Object> keys = redisTemplate.opsForHash().keys(hashKey);
+			// 检查过期key是否存在
+			if (!Boolean.TRUE.equals(redisTemplate.hasKey(expireKey))) {
+				expiredUserIds.add(userId);
+			}
+		}
 
-        return keys.stream()
-                .map(Object::toString)
-                .collect(Collectors.toList());
-    }
+		// 删除已过期的用户
+		if (!expiredUserIds.isEmpty()) {
+			Object[] userIdsArray = expiredUserIds.toArray();
+			redisTemplate.opsForHash().delete(hashKey, userIdsArray);
+			System.out.println("清理了 " + expiredUserIds.size() + " 个过期用户");
+		}
+	}
 
-    /**
-     * 从复合ID中提取组ID
-     * @param compositeId 格式：部门,组ID,用户ID
-     * @return 组ID，格式错误返回null
-     */
-    public static String extractGroupId(String compositeId,Integer part) {
-        if (compositeId == null || compositeId.isEmpty()) {
-            return null;
-        }
+	/**
+	 * 从Redis根据组ID获取所有用户ID
+	 * @param groupId 组ID
+	 * @return 用户ID列表
+	 */
+	public List<String> getUserIdsFromRedisByGroupId(String groupId) {
+		RedisTemplate<String, String> redisTemplate = SpringUtil.getBean(RedisTemplate.class);
+		String hashKey = GROUP_USER_HASH + groupId;
 
-        String[] parts = compositeId.split(",");
-        if (parts.length >= 3) {
-            return parts[part];  // 中间的部分就是组ID
-        }
-        return null;
-    }
+		// 获取Hash中的所有键（用户ID）
+		Set<Object> keys = redisTemplate.opsForHash().keys(hashKey);
+
+		return keys.stream().map(Object::toString).collect(Collectors.toList());
+	}
+
+	/**
+	 * 从复合ID中提取组ID
+	 * @param compositeId 格式：部门,组ID,用户ID
+	 * @return 组ID，格式错误返回null
+	 */
+	public static String extractGroupId(String compositeId, Integer part) {
+		if (compositeId == null || compositeId.isEmpty()) {
+			return null;
+		}
+
+		String[] parts = compositeId.split(",");
+		if (parts.length >= 3) {
+			return parts[part]; // 中间的部分就是组ID
+		}
+		return null;
+	}
+
 }
